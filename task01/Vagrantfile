@@ -1,29 +1,67 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
-# nano comment
+# Sergey Pimenov
 
 Vagrant.configure("2") do |config|
-  config.vm.box = "centos/7"
+  config.vm.box = "debian/buster64"
 
-  config.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1"
+  config.vm.define "static" do |static|
+    
+     static.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1"
 
-  config.vm.network "private_network", ip: "192.168.33.10"
-
-  config.vm.provider "virtualbox" do |vb|
-    vb.name = "staticsite.vagrant.vm"
-    # Customize the amount of memory on the VM:
-    vb.memory = "512"
-  end
+     static.vm.network "private_network", ip: "192.168.1.80"
+     
+     static.vm.provider "virtualbox" do |vb|
+    	vb.name = "01-demosite-static"
+        vb.memory = "512"
+     end
   
-  config.vm.provision "shell", inline: <<-SHELL
-    yum install -y httpd
+     static.vm.provision "shell", inline: <<-SHELL
+     
+     	sudo apt-get install -y apache2
 
-    chmod 775 /var/www/html
-    chown -R root:vagrant /var/www/html
+     	sudo chmod 775 /var/www/html
+     	sudo chown -R root:vagrant /var/www/html
 
-    cp /vagrant/index.html /var/www/html
+     	sudo cp /vagrant/index.html /var/www/html
 
-    systemctl enable httpd
-    systemctl start httpd
-  SHELL
+    	sudo systemctl enable apache2
+     	sudo systemctl start apache2
+
+     SHELL
+
+  end
+
+
+
+
+  config.vm.define "dynamic" do |dynamic|
+
+    dynamic.vm.network "forwarded_port", guest: 80, host: 8081, host_ip: "127.0.0.1"
+
+    dynamic.vm.network "private_network", ip: "192.168.1.81"
+     
+    dynamic.vm.provider "virtualbox" do |vb|
+      vb.name = "01-demosite-php"
+      vb.memory = "512"
+    end
+  
+    dynamic.vm.provision "shell", inline: <<-SHELL
+     
+      sudo apt-get install -y apache2
+      sudo apt-get install -y php libapache2-mod-php
+
+      sudo chmod 775 /var/www/html
+      sudo chown -R root:vagrant /var/www/html
+      
+      sudo rm /var/www/html/index.html
+      sudo cp /vagrant/index.php /var/www/html
+
+      sudo systemctl enable apache2
+      sudo systemctl start apache2
+
+    SHELL
+
+  end
+
 end
