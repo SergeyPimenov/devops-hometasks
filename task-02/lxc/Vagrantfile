@@ -1,0 +1,18 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+# Sergey Pimenov 
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "debian/buster64"
+  config.vm.network "forwarded_port", guest: 80, host: 8080
+  config.vm.network "forwarded_port", guest: 81, host: 8081
+     
+  config.vm.provider "virtualbox" do |vb|
+    vb.name = "deb-bust-lxc"
+    vb.memory = "1024"
+  end
+  
+  config.vm.synced_folder ".", "/vagrant", type: "rsync"
+  
+  config.vm.provision "shell", path: "lxc-script.sh"
+end

@@ -1,0 +1,63 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+# Sergey Pimenov
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "SergeyPimenov/CentOS8_LAMP"
+
+  ext_ip = "192.168.1.1"
+  config.vm.network "private_network", ip: ext_ip
+  config.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1", guest_ip: ext_ip
+  config.vm.network "forwarded_port", guest: 81, host: 8081, host_ip: "127.0.0.1", guest_ip: ext_ip
+
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.name = "CentOS8_LAMP_PIMSERVAL"
+    vb.memory = "512"
+  end
+
+  config.vm.provision "shell", inline: <<-SHELL
+    # Create site directories 'static' and 'dynamic'
+    sudo mkdir -pv /var/www/static/
+    sudo chmod -v 775 /var/www/static
+    sudo chown -vR root:vagrant /var/www/static
+    sudo cp /vagrant/index.html /var/www/static/
+
+    sudo mkdir -pv /var/www/dynamic/
+    sudo chmod -v 775 /var/www/dynamic
+    sudo chown -vR root:vagrant /var/www/dynamic
+    sudo cp /vagrant/index.php /var/www/dynamic/
+
+    # Config VirtualHosts  
+    sudo mkdir -pv /etc/httpd/sites-available
+    sudo chmod -v 775 /etc/httpd/sites-available
+    sudo chown -vR root:vagrant /etc/httpd/sites-available	
+
+    sudo mkdir -pv /etc/httpd/sites-enabled
+    sudo chmod -v 775 /etc/httpd/sites-enabled
+    sudo chown -vR root:vagrant /etc/httpd/sites-enabled
+
+    # Disabling unused files .conf
+    mv /etc/httpd/conf.d/welcome.conf /etc/httpd/conf.d/welcome.conf.bak
+    mv /etc/httpd/conf.d/userdir.conf /etc/httpd/conf.d/userdir.conf.bak
+    mv /etc/httpd/conf.d/autoindex.conf /etc/httpd/conf.d/autoindex.conf.bak
+
+    # Enabling necessary files .conf
+    sudo cp /vagrant/static.conf /etc/httpd/conf.d/static.conf
+    sudo cp /vagrant/dynamic.conf /etc/httpd/conf.d/dynamic.conf
+
+    # Enabling VirtualHosts
+    sudo cp /vagrant/static.conf /etc/httpd/sites-available/static.conf
+    sudo cp /vagrant/dynamic.conf /etc/httpd/sites-available/dynamic.conf
+
+    sudo ln -svf /etc/httpd/sites-available/static.conf /etc/httpd/sites-enabled/static.conf
+    sudo ln -svf /etc/httpd/sites-available/dynamic.conf /etc/httpd/sites-enabled/dynamic.conf
+
+    # Adding of Apache2 80/81 port listening
+    sed -i.bak -e "/Listen 80/a Listen 81" /etc/httpd/conf/httpd.conf
+
+    # Apache2 service restarting
+    sudo apachectl restart
+  SHELL
+end
