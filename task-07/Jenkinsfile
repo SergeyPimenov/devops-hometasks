@@ -1,0 +1,109 @@
+pipeline {
+    agent none
+    
+    tools {
+        go 'Go 1.13.7'
+        git 'Default'
+    }
+
+    environment {
+        NEXUS_CREDS = credentials('nexus-creds')
+        SETUP_SERVERS = """
+            sudo service wordcloud stop
+            curl -X GET -u ${NEXUS_CREDS} "http://192.168.50.11:8081/repository/word-cloud-generator/1/word-cloud-generator/1.${BUILD_NUMBER}/word-cloud-generator-1.${BUILD_NUMBER}.gz" -o /opt/wordcloud/word-cloud-generator.gz
+            gunzip -f /opt/wordcloud/word-cloud-generator.gz
+            chmod +x /opt/wordcloud/word-cloud-generator
+            sudo service wordcloud start
+        """
+        TESTS = """
+            res=`curl -s -H "Content-Type: application/json" http://192.168.50.30:8888/version | jq '. | length'`
+            if [ "1" != "\$res" ]; then
+              exit 99
+            fi
+
+            res=`curl -s -H "Content-Type: application/json" -d '{"text":"ths is a really really really important thing this is"}' http://192.168.50.30:8888/api | jq '. | length'`
+            if [ "7" != "\$res" ]; then
+              exit 99
+            fi
+        """
+    }
+
+    stages {
+        stage('Downloading source code from repository') {
+            agent any
+            steps {
+                git 'https://github.com/L-Eugene/word-cloud-generator.git'
+            }
+        }
+        
+        stage('lint test') {
+            agent any
+    
+            environment {
+                GOPATH = "${WORKSPACE}"
+                PATH = "$PATH:${WORKSPACE}/bin"
+                }   
+            
+            steps {
+                sh script: """
+                    sed -i \'s/1.DEVELOPMENT/1.${BUILD_NUMBER}/g\' ./rice-box.go
+                    make godep
+                    make lint
+                    make test
+                """
+            }
+        }
+
+        stage('clean build upload') {
+            agent any
+    
+            environment {
+                GOPATH = "${WORKSPACE}"
+                PATH = "$PATH:${WORKSPACE}/bin"
+                }   
+            
+            steps {
+                sh script: """
+                    make clean
+                    make build
+                    md5sum artifacts/*/word-cloud-generator* >artifacts/word-cloud-generator.md5
+                    gzip artifacts/*/word-cloud-generator*
+                """
+                nexusArtifactUploader artifacts: [[artifactId: 'word-cloud-generator', classifier: '', file: 'artifacts/linux/word-cloud-generator.gz', type: 'gz']], credentialsId: 'nexus-creds', groupId: '1', nexusUrl: '192.168.50.11:8081', nexusVersion: 'nexus3', protocol: 'http', repository: 'word-cloud-generator', version: '1.$BUILD_NUMBER'
+            }
+        }
+
+        stage('App installation on staging server') {
+            agent any
+
+            steps {
+                sshPublisher(publishers: [sshPublisherDesc(configName: 'staging server', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: """${SETUP_SERVERS}""", execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+            }
+        }
+        
+        stage('Run integration_tests in 2 parallel threads'){
+            parallel {
+                stage('test-1') {
+                    agent any
+                    steps {
+                        sh script: "${TESTS}"
+                    }
+                }
+                stage('test-2') {
+                    agent any
+                    steps {
+                        sh script: "${TESTS}"
+                    }
+                }
+            }
+        }
+        
+        stage('App installation on production server') {
+            agent any
+
+            steps {
+                sshPublisher(publishers: [sshPublisherDesc(configName: 'production server', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: """${SETUP_SERVERS}""", execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+            }
+        }
+    }
+}
