@@ -1,0 +1,14 @@
+FROM golang:latest
+
+SHELL ["/bin/bash", "-c"]
+RUN cd /go
+RUN git clone https://github.com/L-Eugene/word-cloud-generator.git
+RUN cd /go/word-cloud-generator 
+RUN make 
+
+
+FROM alpine:latest
+
+COPY --from=0 /go/word-cloud-generator/artifacts/linux/word-cloud-generator /
+RUN chmod +x /word-cloud-generator
+ENTRYPOINT nohup /word-cloud-generator
