@@ -1,6 +1,10 @@
 pipeline {
     agent none
     
+    options {
+        skipDefaultCheckout()
+    }
+    
     tools {
         go 'Go 1.13.7'
         git 'Default'
