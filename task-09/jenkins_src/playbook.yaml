@@ -1,0 +1,29 @@
+---
+- name: Setup Jenkins
+  hosts: 127.0.0.1
+  connection: local 
+  become: yes
+  vars:
+    jenkins_hostname: localhost
+    jenkins_version: "2.221"
+    jenkins_admin_username: admin
+    jenkins_admin_password: admin
+    jenkins_plugins:
+      - golang
+      - git
+      - github
+      - nexus-artifact-uploader      
+      - workflow-aggregator
+      - docker-plugin
+    jenkins_plugins_install_dependencies: true
+  
+  pre_tasks:
+    - apt:
+        pkg:
+        - git
+
+        state: present
+  roles:
+    - role: geerlingguy.java 
+    - role: geerlingguy.jenkins
+  

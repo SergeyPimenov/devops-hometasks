@@ -1,0 +1,34 @@
+version: '3'
+services:
+  jenkins:
+    build:
+      context: ./jenkins_src
+      dockerfile: Dockerfile
+    ports:
+      - "80:8080"
+    volumes:
+      - /vagrant/:/vagrant/
+      - ./files-jenkins/jobs/:/var/lib/jenkins/jobs/
+      - ./files-jenkins/master.key:/var/lib/jenkins/secrets/master.key
+      - ./files-jenkins/hudson.util.Secret:/var/lib/jenkins/secrets/hudson.util.Secret
+      - ./files-jenkins/credentials.xml:/var/lib/jenkins/credentials.xml
+      - /var/run/docker.sock:/var/run/docker.sock   
+      - tmp:/var/lib/jenkins/workspace 
+    networks:
+      - network
+    container_name: SVP_jenkins    
+  nexus:
+    build:
+      context: ./nexus_src
+      dockerfile: Dockerfile
+    ports:
+      - "81:8081"  
+    volumes:
+      - /vagrant/:/vagrant/
+    networks:
+      - network
+    container_name: SVP_nexus  
+networks: 
+  network:      
+volumes: 
+  tmp:
