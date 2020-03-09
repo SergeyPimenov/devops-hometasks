@@ -8,10 +8,10 @@ services:
       - "80:8080"
     volumes:
       - /vagrant/:/vagrant/
-      - ./files-jenkins/jobs/:/var/lib/jenkins/jobs/
-      - ./files-jenkins/master.key:/var/lib/jenkins/secrets/master.key
-      - ./files-jenkins/hudson.util.Secret:/var/lib/jenkins/secrets/hudson.util.Secret
-      - ./files-jenkins/credentials.xml:/var/lib/jenkins/credentials.xml
+      - ./jenkins_src/jobs/:/var/lib/jenkins/jobs/
+      - ./jenkins_src/master.key:/var/lib/jenkins/secrets/master.key
+      - ./jenkins_src/hudson.util.Secret:/var/lib/jenkins/secrets/hudson.util.Secret
+      - ./jenkins_src/credentials.xml:/var/lib/jenkins/credentials.xml
       - /var/run/docker.sock:/var/run/docker.sock   
       - tmp:/var/lib/jenkins/workspace 
     networks:
